@@ -122,7 +122,6 @@ impl<T> LinkedList<T> {
 
         if self.is_empty() && other.is_empty() {
             // nothing to do
-            ()
         } else if self.is_empty() {
             let other_head = (*other.sentinel).next();
             let other_tail = (*other.sentinel).prev();
@@ -164,7 +163,6 @@ impl<T> LinkedList<T> {
 
         if self.is_empty() && other.is_empty() {
             // nothing to do
-            ()
         } else if self.is_empty() {
             let other_head = (*other.sentinel).next();
             let other_tail = (*other.sentinel).prev();
