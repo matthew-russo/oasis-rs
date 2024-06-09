@@ -3,4 +3,11 @@ name = "oasis-rs"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
+[features]
+no-std = []
+
+[dev-dependencies]
+loom = "0.5"
+proptest-derive = "0.3"
+proptest-state-machine = "0.1"
+proptest = "1.0"
