@@ -55,6 +55,12 @@ impl<T> Oneshot<T> {
     }
 }
 
+impl<T> Default for Oneshot<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Drop for Oneshot<T> {
     fn drop(&mut self) {
         if *self.ready.get_mut() {
