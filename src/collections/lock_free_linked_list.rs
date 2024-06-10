@@ -305,16 +305,16 @@ impl<T: 'static> LockFreeLinkedList<T> {
                 break;
             }
 
-            if node.deref_unmarked().prev.cas(node_prev.get_ptr(), prev.unmarked()) {
-                if !prev.deref_unmarked().prev.is_marked() {
-                    break;
-                }
+            if node.deref_unmarked().prev.cas(node_prev.get_ptr(), prev.unmarked()) &&
+                !prev.deref_unmarked().prev.is_marked()
+            {
+                break;
             }
             #[cfg(all(not(feature = "no-std"), all(test, feature = "loom")))]
             loom::sync::atomic::spin_loop_hint();
         }
 
-        return prev;
+        prev
     }
 
     fn help_delete(&self, node: TaggedPtr<Node<T>>) {
@@ -375,13 +375,19 @@ impl<T: 'static> LockFreeLinkedList<T> {
     }
 }
 
+impl<T: 'static> Default for LockFreeLinkedList<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: 'static> LockFreeLinkedList<T> {
     #[allow(dead_code)]
     fn pretty_print(&self) {
         println!("\n\nLockFreeLinkedList: ");
         let mut curr = &self.sentinel_head;
 
-        while curr.get_ptr() != core::ptr::null_mut() {
+        while !curr.get_ptr().is_null() {
             let c = curr.deref_unmarked();
             println!(
                 "\n<-- {:?} -- ( self: {:p} data: {:p} ) -- {:?} -->",
