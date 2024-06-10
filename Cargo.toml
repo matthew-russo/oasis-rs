@@ -5,6 +5,10 @@ edition = "2021"
 
 [features]
 no-std = []
+loom = []
+
+[dependencies]
+cfg-if = "1.0.0"
 
 [dev-dependencies]
 loom = "0.5"

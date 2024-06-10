@@ -178,6 +178,7 @@ dependencies = [
 name = "oasis-rs"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "loom",
  "proptest",
  "proptest-derive",
