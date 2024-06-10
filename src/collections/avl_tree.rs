@@ -1,7 +1,7 @@
+use core::cmp::Ordering;
+
 #[cfg(feature = "no-std")]
 use alloc::boxed::Box;
-#[cfg(not(feature = "no-std"))]
-use std::boxed::Box;
 
 pub struct AvlTreeNode<T: Ord> {
     balance_factor: i8,
@@ -267,17 +267,20 @@ fn rotate_left_right<T: Ord>(
         (*left_right_child).set_parent(curr_root.parent);
         curr_root.set_parent(left_right_child);
 
-        if (*left_right_child).balance_factor() == 0 {
-            curr_root.set_balance_factor(0);
-            curr_left_node_with_heavy_right.set_balance_factor(0);
-        } else {
-            if (*left_right_child).balance_factor() < 0 {
-                curr_root.set_balance_factor(curr_root.balance_factor() - 1);
-                curr_left_node_with_heavy_right.set_balance_factor(0);
-            } else {
+        match (*left_right_child).balance_factor().cmp(&0) {
+            Ordering::Greater => {
                 curr_root.set_balance_factor(0);
                 curr_left_node_with_heavy_right
                     .set_balance_factor(curr_left_node_with_heavy_right.balance_factor() + 1);
+            }
+            Ordering::Less => {
+                curr_root.set_balance_factor(curr_root.balance_factor() - 1);
+                curr_left_node_with_heavy_right.set_balance_factor(0);
+            }
+            Ordering::Equal => {
+
+                curr_root.set_balance_factor(0);
+                curr_left_node_with_heavy_right.set_balance_factor(0);
             }
         }
 
@@ -322,13 +325,11 @@ impl<T: Ord> AvlTree<T> {
                 } else {
                     curr = c.left_child();
                 }
-            } else {
-                if c.right_child().is_null() {
+            } else if c.right_child().is_null() {
                     c.set_right_child(Box::into_raw(Box::new(AvlTreeNode::new(key))));
                     break;
-                } else {
-                    curr = c.right_child();
-                }
+            } else {
+                curr = c.right_child();
             }
         }
 
@@ -388,7 +389,7 @@ impl<T: Ord> AvlTree<T> {
                 // N is the new root of the rotated subtree
                 // Height does not change: Height(N) == old Height(X)
                 (*new_parent).set_parent(parent_parent);
-                if parent_parent != core::ptr::null_mut() {
+                if !parent_parent.is_null() {
                     if parent == (*parent_parent).left_child() {
                         (*parent_parent).set_left_child(new_parent);
                     } else {
@@ -423,27 +424,27 @@ impl<T: Ord> AvlTree<T> {
             // above check and when we find a null child below, we
             // break the loop
             let c = unsafe { &mut *curr };
-            if key == &c.data {
-                if c.left_child().is_null() {
-                    self.shift_nodes(c, c.right_child());
-                } else if c.right_child().is_null() {
-                    self.shift_nodes(c, c.left_child());
-                } else {
-                    let y = c.successor();
-                    if unsafe { (*y).parent } != c {
-                        self.shift_nodes(y, unsafe { (*y).right });
-                        unsafe { (*y).right = c.right };
-                        unsafe { (*(*y).right).parent = y };
+            match key.cmp(&c.data) {
+                Ordering::Greater => curr = c.right_child(),
+                Ordering::Less => curr = c.left_child(),
+                Ordering::Equal => {
+                    if c.left_child().is_null() {
+                        self.shift_nodes(c, c.right_child());
+                    } else if c.right_child().is_null() {
+                        self.shift_nodes(c, c.left_child());
+                    } else {
+                        let y = c.successor();
+                        if unsafe { (*y).parent } != c {
+                            self.shift_nodes(y, unsafe { (*y).right });
+                            unsafe { (*y).right = c.right };
+                            unsafe { (*(*y).right).parent = y };
+                        }
+                        self.shift_nodes(c, y);
+                        unsafe { (*y).left = c.left };
+                        unsafe { (*(*y).left).parent = y };
                     }
-                    self.shift_nodes(c, y);
-                    unsafe { (*y).left = c.left };
-                    unsafe { (*(*y).left).parent = y };
+                    break;
                 }
-                break;
-            } else if key < &c.data {
-                curr = c.left_child();
-            } else {
-                curr = c.right_child();
             }
         }
 
@@ -555,12 +556,10 @@ impl<T: Ord> AvlTree<T> {
             // SAFETY: we handle the root possibly being null before starting the
             // loop and each iteration checks that curr is not null
             let c = unsafe { &mut *curr };
-            if key == &c.data {
-                return Some(c);
-            } else if key < &c.data {
-                curr = c.left_child();
-            } else {
-                curr = c.right_child();
+            match key.cmp(&c.data) {
+                Ordering::Greater => curr = c.right_child(),
+                Ordering::Less => curr = c.left_child(),
+                Ordering::Equal => return Some(c),
             }
         }
     }
