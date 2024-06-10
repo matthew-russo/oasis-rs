@@ -48,12 +48,12 @@ impl<T> TaggedPtr<T> {
         ((self.get_ptr() as u64) & !Self::IS_MARKED_FOR_DELETION) as *mut T
     }
 
-    pub unsafe fn deref(&self) -> &'static T {
-        &*self.unmarked()
+    pub fn deref_unmarked(&self) -> &'static T {
+        unsafe { &*self.unmarked() }
     }
 
-    pub unsafe fn deref_mut(&self) -> &'static mut T {
-        &mut *self.unmarked()
+    pub fn deref_unmarked_mut(&self) -> &'static mut T {
+        unsafe { &mut *self.unmarked() }
     }
 }
 
