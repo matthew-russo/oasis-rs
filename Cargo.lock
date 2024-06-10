@@ -182,6 +182,7 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "proptest-state-machine",
+ "rand",
 ]
 
 [[package]]
