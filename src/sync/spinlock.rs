@@ -57,7 +57,7 @@ impl<T> Spinlock<T> {
         RawSpinlockGuard { lock: self }
     }
 
-    /// SAFETY:
+    /// # Safety
     /// - must not be called if the caller does not currently hold the lock
     /// - must not be called if there are any existing SpinlockGuard's for the lock
     pub unsafe fn raw_unlock(&self) {
