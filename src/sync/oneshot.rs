@@ -2,6 +2,7 @@ use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::sync::atomic::{AtomicBool, Ordering};
 
+/// a channel that supports sending a single value
 pub struct Oneshot<T> {
     message: UnsafeCell<MaybeUninit<T>>,
     in_use: AtomicBool,
@@ -11,6 +12,7 @@ pub struct Oneshot<T> {
 unsafe impl<T> Sync for Oneshot<T> where T: Send {}
 
 impl<T> Oneshot<T> {
+    /// construct a new Oneshot
     pub const fn new() -> Self {
         Self {
             message: UnsafeCell::new(MaybeUninit::uninit()),
@@ -19,7 +21,7 @@ impl<T> Oneshot<T> {
         }
     }
 
-    /// Sends a message on the oneshot.
+    /// sends a message on the oneshot
     ///
     /// # Panics
     /// - if a message has already been sent
@@ -35,13 +37,14 @@ impl<T> Oneshot<T> {
         self.ready.store(true, Ordering::Release);
     }
 
+    /// checks whether a message is ready to be received
     pub fn is_ready(&self) -> bool {
         self.ready.load(Ordering::Relaxed)
     }
 
-    /// Receives the message from the oneshot.
+    /// receives the message from the oneshot
     ///
-    /// Use `Oneshot::is_ready` to check if the message is ready to be received.
+    /// use `Oneshot::is_ready` to check if the message is ready to be received.
     ///
     /// # Panics
     /// - if no message is available

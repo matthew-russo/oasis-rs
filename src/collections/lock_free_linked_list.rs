@@ -1,12 +1,20 @@
 use crate::sync::tagged_ptr::TaggedPtr;
 
+/// a node in the lock-free linked list
 pub struct Node<T> {
+    /// the underlying data pointed to by this node
     data: *mut T,
+    /// the previous node in the list, represented as a TaggedPtr which stores
+    /// whether the node is logically removed from the list
     prev: TaggedPtr<Node<T>>,
+    /// the next node in the list, represented as a TaggedPtr which stores
+    /// whether the node is logically removed from the list
     next: TaggedPtr<Node<T>>,
 }
 
 impl<T> Node<T> {
+    /// construct a new node with the provided data, with its previous and next
+    /// pointers initialized to the null pointer
     pub fn new(data: *mut T) -> Self {
         Self {
             data,
@@ -35,6 +43,10 @@ impl<T> core::fmt::Debug for Node<T> {
     }
 }
 
+/// an implementation of Sundell and Tsigas' lock-free doubly-linked list
+///
+/// https://arxiv.org/abs/cs/0408016
+/// https://arxiv.org/pdf/cs/0408016
 #[derive(Clone)]
 pub struct LockFreeLinkedList<T> {
     sentinel_head: TaggedPtr<Node<T>>,
@@ -42,6 +54,7 @@ pub struct LockFreeLinkedList<T> {
 }
 
 impl<T: 'static> LockFreeLinkedList<T> {
+    /// create a new linked list
     pub fn new() -> Self {
         let head = Node::new(core::ptr::null_mut());
         let head = TaggedPtr::new(Box::into_raw(Box::new(head)));
@@ -58,6 +71,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         }
     }
 
+    /// push a node to the front of the list
     pub fn push_front(&self, node: &'static mut Node<T>) {
         // (1): INIT
         // initialize the Node
@@ -93,6 +107,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         self.push_common(node, current_head);
     }
 
+    /// push a node to the back of the list
     pub fn push_back(&self, node: &'static mut Node<T>) {
         // (1): INIT
         // initialize the node
@@ -128,6 +143,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         self.push_common(node, self.sentinel_tail.clone());
     }
 
+    /// pop a node from the front of the list, or None if the list is empty
     pub fn pop_front(&self) -> Option<&'static mut Node<T>> {
         let mut current_head: TaggedPtr<Node<T>>;
         loop {
@@ -167,6 +183,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         Some(current_head.deref_unmarked_mut())
     }
 
+    /// pop a node from the back of the list, or None if the list is empty
     pub fn pop_back(&self) -> Option<&'static mut Node<T>> {
         let mut current_tail = self.sentinel_tail.deref_unmarked().prev();
 
@@ -207,7 +224,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         Some(current_tail.deref_unmarked_mut())
     }
 
-    // fixup newly inserted node's next node to point backwards to node
+    /// fixup newly inserted node's next node to point backwards to node
     fn push_common(&self, node: TaggedPtr<Node<T>>, next: TaggedPtr<Node<T>>) {
         loop {
             let next_prev = next.deref_unmarked().prev();
@@ -231,6 +248,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         }
     }
 
+    /// mark the provided node's previous node as logically removed
     fn mark_prev(&self, node: &TaggedPtr<Node<T>>) {
         loop {
             let prev = node.deref_unmarked().prev();

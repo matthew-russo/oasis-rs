@@ -7,6 +7,7 @@ pub enum RingBufferError {
     NoCapacity,
 }
 
+/// a non-allocating, fixed-capacity circular RingBuffer
 pub struct RingBuffer<T, const N: usize> {
     inner: [MaybeUninit<T>; N],
     writer: usize,
@@ -15,6 +16,7 @@ pub struct RingBuffer<T, const N: usize> {
 }
 
 impl<T, const N: usize> RingBuffer<T, N> {
+    /// construct a new RingBuffer
     pub fn new() -> Self {
         Self {
             // Safety: The `assume_init` is safe because the type we are
@@ -28,22 +30,28 @@ impl<T, const N: usize> RingBuffer<T, N> {
         }
     }
 
+    /// get the current length of the RingBuffer
     pub fn len(&self) -> usize {
         self.in_use
     }
 
+    /// get total fixed capacity of the RingBuffer
     pub const fn capacity(&self) -> usize {
         N
     }
 
+    /// get how much space is remaining in the RingBuffer
     pub fn free_space(&self) -> usize {
         N - self.in_use
     }
 
+    /// returns true if there are no entries in the RingBuffer
     pub fn is_empty(&self) -> bool {
         self.in_use == 0
     }
 
+    /// attempt to push the provided data to the RingBuffer, returning an error
+    /// if there is no capacity
     pub fn push(&mut self, data: T) -> RingBufferResult<()> {
         if self.in_use >= N {
             return Err(RingBufferError::NoCapacity);
@@ -59,6 +67,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         Ok(())
     }
 
+    /// borrow the first element in the RingBuffer, or None if its empty
     pub fn peek(&mut self) -> Option<&T> {
         if self.in_use == 0 {
             return None;
@@ -69,6 +78,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         Some(t)
     }
 
+    /// remove and return the first element in the RingBuffer, or None if its empty
     pub fn pop(&mut self) -> Option<T> {
         if self.in_use == 0 {
             return None;

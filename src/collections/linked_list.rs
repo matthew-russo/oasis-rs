@@ -1,11 +1,16 @@
 use core::mem::MaybeUninit;
 
+/// a non-allocating, circular doubly-linked list, usable in no-std environments as the
+/// caller is expected to handle allocations and frees
 pub struct LinkedList<T> {
+    /// a sentinel node that always exists, even in empty lists
     sentinel: *mut LinkedListNode<T>,
+    /// the number of non-sentinel elements in the list
     len: usize,
 }
 
 impl<T> LinkedList<T> {
+    /// create a new LinkedList, using the provided storage for the sentinel node
     pub fn new(sentinel_ptr: &mut MaybeUninit<LinkedListNode<T>>) -> Self {
         LinkedListNode::init_sentinel(sentinel_ptr);
         Self {
@@ -14,14 +19,18 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// get the length of the list, not including the sentinel node
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// returns true if the length of the list is 0
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    /// get the first element of the list after the sentinel, or None if the list
+    /// is empty
     pub fn head(&self) -> Option<*mut LinkedListNode<T>> {
         if self.len == 0 {
             None
@@ -30,7 +39,8 @@ impl<T> LinkedList<T> {
             unsafe { Some((*self.sentinel).next()) }
         }
     }
-
+    /// get the first element of the list before the sentinel, or None if the list
+    /// is empty
     pub fn tail(&self) -> Option<*mut LinkedListNode<T>> {
         if self.len == 0 {
             None
@@ -40,6 +50,8 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// push a node to the front of this list. the provided node must be
+    /// initialized and be at a stable location in storage
     /// # Safety
     /// `n` must point to a valid LinkedListNode<T>
     pub unsafe fn push_front(&mut self, n: *mut LinkedListNode<T>) {
@@ -55,6 +67,8 @@ impl<T> LinkedList<T> {
         self.len += 1;
     }
 
+    /// push a node to the back of this list. the provided node must be
+    /// initialized and be at a stable location in storage
     /// # Safety
     /// `n` must point to a valid LinkedListNode<T>
     pub unsafe fn push_back(&mut self, n: *mut LinkedListNode<T>) {
@@ -70,6 +84,9 @@ impl<T> LinkedList<T> {
         self.len += 1;
     }
 
+    /// pop a node from the front of this list. if the list is empty, None, is
+    /// returned. the caller is responsible for freeing any underlying storage
+    /// of the node.
     /// # Safety
     /// `self` must be a valid LinkedList
     pub unsafe fn pop_front(&mut self) -> Option<*mut LinkedListNode<T>> {
@@ -88,6 +105,9 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// pop a node from the back of this list. if the list is empty, None, is
+    /// returned. the caller is responsible for freeing any underlying storage
+    /// of the node.
     /// # Safety
     /// `self` must be a valid LinkedList
     pub unsafe fn pop_back(&mut self) -> Option<*mut LinkedListNode<T>> {
@@ -106,7 +126,7 @@ impl<T> LinkedList<T> {
         }
     }
 
-    /// Appends another LinkedList to the end of self. We will always use
+    /// appends another list to the end of `self`. we will always use
     /// `self`'s sentinel for the the resulting list, returning a pointer to
     /// `other`'s sentinel that the caller is expected to clean up as
     /// necessary.
@@ -147,7 +167,7 @@ impl<T> LinkedList<T> {
         other.sentinel
     }
 
-    /// Prepends another LinkedList to the beginning of self. We will always use
+    /// prepends another list to the beginning of `self`. we will always use
     /// `self`'s sentinel for the resulting list, returning a pointer to
     /// `other`'s sentinel that the caller is expected to clean up as
     /// necessary.
@@ -188,6 +208,7 @@ impl<T> LinkedList<T> {
         other.sentinel
     }
 
+    /// return an immutable iterator for this list
     pub fn iter(&self) -> LinkedListIter<'_, T> {
         LinkedListIter {
             _ll: self,
@@ -195,6 +216,7 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// return a mutable iterator for this list
     pub fn iter_mut(&mut self) -> LinkedListIterMut<'_, T> {
         LinkedListIterMut {
             _ll: self,
@@ -202,18 +224,23 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// return a cursor for this list
     pub fn cursor(&mut self) -> LinkedListCursor<'_, T> {
         LinkedListCursor::new(self)
     }
 }
 
+// TODO [matthew-russo] i don't know if this is sound
 unsafe impl<T: Send> Send for LinkedList<T> {}
 
+/// a node in the linked list, a public container that hides internal details
+/// of node layout
 pub struct LinkedListNode<T> {
     internal: InternalLinkedListNode<T>,
 }
 
 impl<T> LinkedListNode<T> {
+    /// initialize the sentinel node
     fn init_sentinel(sentinel_ptr: &mut MaybeUninit<LinkedListNode<T>>) {
         sentinel_ptr.write(LinkedListNode {
             internal: InternalLinkedListNode::Sentinel {
@@ -223,6 +250,7 @@ impl<T> LinkedListNode<T> {
         });
     }
 
+    /// returns true if the node is the sentinel node
     fn is_sentinel(&self) -> bool {
         match &self.internal {
             InternalLinkedListNode::Sentinel { .. } => true,
@@ -230,12 +258,14 @@ impl<T> LinkedListNode<T> {
         }
     }
 
+    /// constructs a new node given the provided value
     pub const fn new(t: T) -> Self {
         Self {
             internal: InternalLinkedListNode::new_data(t),
         }
     }
 
+    /// immutably borrow the internal data of the node
     pub fn data(&self) -> &T {
         match &self.internal {
             InternalLinkedListNode::Sentinel { .. } => {
@@ -245,6 +275,7 @@ impl<T> LinkedListNode<T> {
         }
     }
 
+    /// mutably borrow the internal data of the node
     pub fn data_mut(&mut self) -> &mut T {
         match &mut self.internal {
             InternalLinkedListNode::Sentinel { .. } => {
@@ -254,6 +285,8 @@ impl<T> LinkedListNode<T> {
         }
     }
 
+    /// peek if the next node is present and return an immutable
+    /// reference to its data
     pub fn peek_next_data(&self) -> Option<&T> {
         assert!(!self.next().is_null());
         match unsafe { &(*self.next()).internal } {
@@ -262,6 +295,8 @@ impl<T> LinkedListNode<T> {
         }
     }
 
+    /// peek if the next node is present and return an immutable
+    /// reference to its data
     pub fn peek_prev_data(&self) -> Option<&T> {
         assert!(!self.prev().is_null());
         match unsafe { &(*self.prev()).internal } {
@@ -270,11 +305,12 @@ impl<T> LinkedListNode<T> {
         }
     }
 
+    /// insert the provided node before the current node
     /// # Safety
     /// `node` must be a valid LinkedListNode<T>
     // Before: (self.prev) <-> (self) <-> (self.next)
     // After: (self.prev) <-> (n) <-> (self) <-> (self.next)
-     unsafe fn insert_before(&mut self, node: *mut LinkedListNode<T>) {
+    unsafe fn insert_before(&mut self, node: *mut LinkedListNode<T>) {
         assert!(!self.prev().is_null());
 
         let curr_prev = self.prev();
@@ -288,6 +324,7 @@ impl<T> LinkedListNode<T> {
     }
 
 
+    /// insert the provided node after the current node
     /// # Safety
     /// `node` must be a valid LinkedListNode<T>
     // Before: (self.prev) <-> (self) <-> (self.next)
@@ -305,8 +342,8 @@ impl<T> LinkedListNode<T> {
         self.set_next(node);
     }
 
-    // Remove self from whatever list it is in, leaving self.prev linked with
-    // self.next
+    /// Remove self from whatever list it is in, leaving self.prev linked with
+    /// self.next
     fn unlink_self(&mut self) {
         match &mut self.internal {
             InternalLinkedListNode::Sentinel { .. } => {
@@ -360,6 +397,7 @@ impl<T: core::fmt::Debug> core::fmt::Debug for LinkedListNode<T> {
     }
 }
 
+/// the private internal layout of a node, either a sentinel or user-provided data
 enum InternalLinkedListNode<T> {
     Sentinel {
         prev: *mut LinkedListNode<T>,
@@ -423,6 +461,8 @@ impl<'a, T> Iterator for LinkedListIter<'a, T> {
             return None;
         }
 
+        // # Safety
+        // we just validated `self.curr` is not null
         unsafe {
             let to_return = &(*self.curr);
 
@@ -450,6 +490,8 @@ impl<'a, T> Iterator for LinkedListIterMut<'a, T> {
             return None;
         }
 
+        // # Safety
+        // we just validated `self.curr` is not null
         unsafe {
             let to_return = &mut (*self.curr);
 
@@ -478,7 +520,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// Get the data of the current node or None if the current node is the
+    /// get the data of the current node or None if the current node is the
     /// sentinel
     pub fn curr_data(&self) -> Option<&T> {
         let curr = unsafe { &*self.curr };
@@ -489,7 +531,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// Get the data of the current node or None if the current node is the
+    /// get the data of the current node or None if the current node is the
     /// sentinel
     pub fn curr_data_mut(&mut self) -> Option<&mut T> {
         let curr = unsafe { &mut *self.curr };
@@ -500,7 +542,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// Move the cursor backward one element
+    /// move the cursor backward one element
     pub fn move_prev(&mut self) {
         let curr = unsafe { &*self.curr };
         if curr.is_sentinel() {
@@ -519,7 +561,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// Move the cursor forward one element
+    /// move the cursor forward one element
     pub fn move_next(&mut self) {
         let curr = unsafe { &*self.curr };
         if curr.is_sentinel() {
@@ -538,9 +580,9 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// If the current node is the sentinel, do nothing
+    /// if the current node is the sentinel, do nothing
     ///
-    /// If the current node is data, remove node from the list, reducing the
+    /// if the current node is data, remove node from the list, reducing the
     /// size of the list by 1, advancing the cursor forward and returning
     /// the removed node.
     pub fn remove_curr(&mut self) -> Option<*mut LinkedListNode<T>> {
@@ -562,7 +604,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         }
     }
 
-    /// Insert the provided node before the currently pointed at node,
+    /// insert the provided node before the currently pointed at node,
     /// increasing the size of the list by 1. The cursor will not move.
     ///
     /// # Safety
@@ -581,7 +623,7 @@ impl<'a, T> LinkedListCursor<'a, T> {
         self.ll.len += 1;
     }
 
-    /// Insert the provided node after the currently pointed at node, increasing
+    /// insert the provided node after the currently pointed at node, increasing
     /// the size of the list by 1. The cursor will not move.
     /// # Safety
     /// `new_node` must be a valid pointer to a LinkedListNode<T>

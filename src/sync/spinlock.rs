@@ -5,6 +5,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 const LOCKED: bool = true;
 const UNLOCKED: bool = false;
 
+/// a spinlock, wasting cpu cycles if the lock is curently held
 pub struct Spinlock<T> {
     is_locked: AtomicBool,
     data: UnsafeCell<T>,
@@ -14,6 +15,7 @@ unsafe impl<T: Send> Send for Spinlock<T> {}
 unsafe impl<T: Send> Sync for Spinlock<T> {}
 
 impl<T> Spinlock<T> {
+    /// cosntruct a new Spinlock
     pub const fn new(data: T) -> Self {
         Self {
             is_locked: AtomicBool::new(UNLOCKED),
@@ -21,6 +23,13 @@ impl<T> Spinlock<T> {
         }
     }
 
+    /// consume the lock and return the inner data
+    pub fn into_inner(self) -> T {
+        self.data.into_inner()
+    }
+
+    /// acquire the lock, spinning the cpu if its already held. the returned guard
+    /// will release the lock 
     pub fn lock(&self) -> SpinlockGuard<'_, T> {
         while self
             .is_locked
@@ -35,14 +44,9 @@ impl<T> Spinlock<T> {
         SpinlockGuard { lock: self }
     }
 
-    pub fn into_inner(self) -> T {
-        self.data.into_inner()
-    }
-
-    fn unlock(&self) {
-        self.is_locked.store(UNLOCKED, Ordering::Release);
-    }
-
+    /// acquire a raw lock guard, spinning the cpu if its already held. the returned
+    /// guard provides access to the data but will *not* release the lock when its
+    /// dropped. `raw_unlock` must manually be called to release the lock
     pub fn raw_lock(&self) -> RawSpinlockGuard<'_, T> {
         while self
             .is_locked
@@ -57,12 +61,20 @@ impl<T> Spinlock<T> {
         RawSpinlockGuard { lock: self }
     }
 
+    /// release a previously acquired raw lock
     /// # Safety
     /// - must not be called if the caller does not currently hold the lock
     /// - must not be called if there are any existing SpinlockGuard's for the lock
     pub unsafe fn raw_unlock(&self) {
         self.unlock();
     }
+
+    /// release the lock
+    fn unlock(&self) {
+        self.is_locked.store(UNLOCKED, Ordering::Release);
+    }
+
+    
 }
 
 /// SpinlockGuard provides safe access to the data behind a Spinlock. It follows
