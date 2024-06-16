@@ -1,10 +1,11 @@
 # oasis-rs
 
-Oasis is a collection of std-adjacent packages that provide common utilites --
-data structures, algorithms, or interfaces to an underlying system. This repository
-contains code for the Rust programming language. Companion repositories for C++
-and Zig can be found, [here](https://github.com/matthew-russo/oasis-cpp) and
-[here](https://github.com/matthew-russo/oasis-zig) respectively.
+Oasis is a collection of core/alloc/std-adjacent packages that provide common utilites --
+data structures, algorithms, or interfaces to an underlying system. Parts of this
+crate support a baremetal, no-std environment by using the "no-std" feature flag.
+This repository contains code for the Rust programming language. Companion repositories
+for C++ and Zig can be found, [here](https://github.com/matthew-russo/oasis-cpp)
+and [here](https://github.com/matthew-russo/oasis-zig) respectively.
 
 # why
 Because its fun and how I learn new things.
