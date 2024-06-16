@@ -62,8 +62,8 @@ impl<T: 'static> LockFreeLinkedList<T> {
         let tail = Node::new(core::ptr::null_mut());
         let tail = TaggedPtr::new(Box::into_raw(Box::new(tail)));
 
-        head.deref_unmarked().next.set_ptr(tail.get_ptr());
-        tail.deref_unmarked().prev.set_ptr(head.get_ptr());
+        head.deref_untagged().next.set_ptr(tail.get_ptr());
+        tail.deref_untagged().prev.set_ptr(head.get_ptr());
 
         Self {
             sentinel_head: head,
@@ -77,25 +77,25 @@ impl<T: 'static> LockFreeLinkedList<T> {
         // initialize the Node
         let node = TaggedPtr::new(core::ptr::addr_of_mut!(*node));
         let prev = self.sentinel_head.clone();
-        let mut current_head = prev.deref_unmarked().next();
+        let mut current_head = prev.deref_untagged().next();
 
         loop {
             // if a concurrent op already won, try again
-            if prev.deref_unmarked().next().get_ptr() != current_head.unmarked() {
-                current_head = prev.deref_unmarked().next();
+            if prev.deref_untagged().next().get_ptr() != current_head.untagged() {
+                current_head = prev.deref_untagged().next();
                 continue;
             }
 
             // prep the node for insertion in between our sentinel head and the current head
-            node.deref_unmarked().prev.set_ptr(prev.unmarked());
-            node.deref_unmarked().next.set_ptr(current_head.unmarked());
+            node.deref_untagged().prev.set_ptr(prev.untagged());
+            node.deref_untagged().next.set_ptr(current_head.untagged());
 
             // (2): LOGICALLY INSERT
             // update the sentinel head's next pointer to point to our new node
             if prev
-                .deref_unmarked()
+                .deref_untagged()
                 .next
-                .cas(current_head.unmarked(), node.unmarked())
+                .cas(current_head.untagged(), node.untagged())
             {
                 break;
             }
@@ -113,25 +113,25 @@ impl<T: 'static> LockFreeLinkedList<T> {
         // initialize the node
         let node = TaggedPtr::new(core::ptr::addr_of_mut!(*node));
         let next = self.sentinel_tail.clone();
-        let mut current_tail = next.deref_unmarked().prev();
+        let mut current_tail = next.deref_untagged().prev();
 
         loop {
             // if a concurrent op already won, help cleanup and try again
-            if current_tail.deref_unmarked().next.get_ptr() != self.sentinel_tail.unmarked() {
+            if current_tail.deref_untagged().next.get_ptr() != self.sentinel_tail.untagged() {
                 current_tail = self.help_insert(current_tail, self.sentinel_tail.clone());
                 continue;
             }
 
             // prep the node for insertion in between the current tail and our sentinel tail
-            node.deref_unmarked().prev.set_ptr(current_tail.unmarked());
-            node.deref_unmarked().next.set_ptr(self.sentinel_tail.unmarked());
+            node.deref_untagged().prev.set_ptr(current_tail.untagged());
+            node.deref_untagged().next.set_ptr(self.sentinel_tail.untagged());
 
             // (2): LOGICALLY INSERT
             // update the current tail's next pointer to point to our node
             if current_tail
-                .deref_unmarked()
+                .deref_untagged()
                 .next
-                .cas(self.sentinel_tail.unmarked(), node.unmarked())
+                .cas(self.sentinel_tail.untagged(), node.untagged())
             {
                 break;
             }
@@ -147,31 +147,31 @@ impl<T: 'static> LockFreeLinkedList<T> {
     pub fn pop_front(&self) -> Option<&'static mut Node<T>> {
         let mut current_head: TaggedPtr<Node<T>>;
         loop {
-            current_head = self.sentinel_head.deref_unmarked().next();
+            current_head = self.sentinel_head.deref_untagged().next();
 
             // if the list is empty, return None
             if current_head.get_ptr() == self.sentinel_tail.get_ptr() {
                 return None;
             }
 
-            // get the node that will be the new head. if its marked, help clean up and try
+            // get the node that will be the new head. if its tagged, help clean up and try
             // again
-            let new_head = current_head.deref_unmarked().next();
-            if new_head.is_marked() {
+            let new_head = current_head.deref_untagged().next();
+            if new_head.is_tagged() {
                 self.help_delete(current_head);
                 continue;
             }
 
             // (4): LOGICALLY REMOVE
-            // update the current head's next pointer to be marked, logically removing it
+            // update the current head's next pointer to be tagged, logically removing it
             // from the list
             if current_head
-                .deref_unmarked()
+                .deref_untagged()
                 .next
-                .cas(new_head.get_ptr(), new_head.marked())
+                .cas(new_head.get_ptr(), new_head.tagged())
             {
                 self.help_delete(current_head.clone());
-                let next = current_head.deref_unmarked().next();
+                let next = current_head.deref_untagged().next();
                 let _prev = self.help_insert(self.sentinel_head.clone(), next);
                 break;
             }
@@ -180,17 +180,17 @@ impl<T: 'static> LockFreeLinkedList<T> {
         }
 
         self.remove_cross_reference(&current_head);
-        Some(current_head.deref_unmarked_mut())
+        Some(current_head.deref_untagged_mut())
     }
 
     /// pop a node from the back of the list, or None if the list is empty
     pub fn pop_back(&self) -> Option<&'static mut Node<T>> {
-        let mut current_tail = self.sentinel_tail.deref_unmarked().prev();
+        let mut current_tail = self.sentinel_tail.deref_untagged().prev();
 
         loop {
-            // if the current tail's next ptr is marked or doesn't point to the sentinel
+            // if the current tail's next ptr is tagged or doesn't point to the sentinel
             // tail, help clean up and try again
-            if current_tail.deref_unmarked().next.get_ptr() != self.sentinel_tail.unmarked() {
+            if current_tail.deref_untagged().next.get_ptr() != self.sentinel_tail.untagged() {
                 current_tail = self.help_insert(current_tail, self.sentinel_tail.clone());
                 continue;
             }
@@ -201,18 +201,18 @@ impl<T: 'static> LockFreeLinkedList<T> {
             }
 
             // (4): LOGICALLY REMOVE
-            // update the current tails next pointer to be marked, logically removing it
+            // update the current tails next pointer to be tagged, logically removing it
             // from the list
             if current_tail
-                .deref_unmarked()
+                .deref_untagged()
                 .next
-                .cas(self.sentinel_tail.unmarked(), self.sentinel_tail.marked())
+                .cas(self.sentinel_tail.untagged(), self.sentinel_tail.tagged())
             {
                 // clean up the now-deleted node
                 self.help_delete(current_tail.clone());
 
                 // fix up pointeres for our new tail
-                let new_tail = current_tail.deref_unmarked().prev();
+                let new_tail = current_tail.deref_untagged().prev();
                 self.help_insert(new_tail, self.sentinel_tail.clone());
                 break;
             }
@@ -221,24 +221,24 @@ impl<T: 'static> LockFreeLinkedList<T> {
         }
 
         self.remove_cross_reference(&current_tail);
-        Some(current_tail.deref_unmarked_mut())
+        Some(current_tail.deref_untagged_mut())
     }
 
     /// fixup newly inserted node's next node to point backwards to node
     fn push_common(&self, node: TaggedPtr<Node<T>>, next: TaggedPtr<Node<T>>) {
         loop {
-            let next_prev = next.deref_unmarked().prev();
+            let next_prev = next.deref_untagged().prev();
 
             // if a concurrent op is already mutating this data, bail out and let them clean
             // up
-            if next_prev.is_marked() || node.deref_unmarked().next.get_ptr() != next.unmarked() {
+            if next_prev.is_tagged() || node.deref_untagged().next.get_ptr() != next.untagged() {
                 break;
             }
 
             // (3): FINALIZE INSERT
             // update the next node's previous ptr to point ot our newly inserted node
-            if next.deref_unmarked().prev.cas(next_prev.get_ptr(), node.unmarked()) {
-                if node.deref_unmarked().prev.is_marked() {
+            if next.deref_untagged().prev.cas(next_prev.get_ptr(), node.untagged()) {
+                if node.deref_untagged().prev.is_tagged() {
                     self.help_insert(node, next);
                 }
                 break;
@@ -251,8 +251,8 @@ impl<T: 'static> LockFreeLinkedList<T> {
     /// mark the provided node's previous node as logically removed
     fn mark_prev(&self, node: &TaggedPtr<Node<T>>) {
         loop {
-            let prev = node.deref_unmarked().prev();
-            if prev.is_marked() || node.deref_unmarked().prev.cas(prev.get_ptr(), prev.marked()) {
+            let prev = node.deref_untagged().prev();
+            if prev.is_tagged() || node.deref_untagged().prev.cas(prev.get_ptr(), prev.tagged()) {
                 break;
             }
             #[cfg(all(not(feature = "no-std"), all(test, feature = "loom")))]
@@ -262,17 +262,17 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
     fn remove_cross_reference(&self, node: &TaggedPtr<Node<T>>) {
         loop {
-            let prev = node.deref_unmarked().prev();
+            let prev = node.deref_untagged().prev();
 
-            if prev.deref_unmarked().prev.is_marked() {
-                node.deref_unmarked().prev.set_ptr(prev.deref_unmarked().prev.marked());
+            if prev.deref_untagged().prev.is_tagged() {
+                node.deref_untagged().prev.set_ptr(prev.deref_untagged().prev.tagged());
                 continue;
             }
 
-            let next = node.deref_unmarked().next();
+            let next = node.deref_untagged().next();
 
-            if next.deref_unmarked().prev.is_marked() {
-                node.deref_unmarked().next.set_ptr(next.deref_unmarked().next.marked());
+            if next.deref_untagged().prev.is_tagged() {
+                node.deref_untagged().next.set_ptr(next.deref_untagged().next.tagged());
                 continue;
             }
 
@@ -289,42 +289,42 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
         loop {
             // get the next node from prev
-            let prev_next = prev.deref_unmarked().next();
+            let prev_next = prev.deref_untagged().next();
             if prev_next.get_ptr().is_null() {
                 if let Some(last_node) = last.take() {
                     self.mark_prev(&prev);
-                    let next_2 = prev.deref_unmarked().next();
+                    let next_2 = prev.deref_untagged().next();
                     last_node
-                        .deref_unmarked()
+                        .deref_untagged()
                         .next
-                        .cas(prev.unmarked(), next_2.unmarked());
+                        .cas(prev.untagged(), next_2.untagged());
                     prev = last_node;
                     last = None;
                 } else {
-                    prev = prev.deref_unmarked().prev();
+                    prev = prev.deref_untagged().prev();
                 }
 
                 continue;
             }
 
-            let node_prev = node.deref_unmarked().prev();
-            if node_prev.is_marked() {
+            let node_prev = node.deref_untagged().prev();
+            if node_prev.is_tagged() {
                 break;
             }
 
             // if the prev node isn't pointing to node, keep traversing
-            if prev_next.get_ptr() != node.unmarked() {
+            if prev_next.get_ptr() != node.untagged() {
                 last = Some(prev);
                 prev = prev_next;
                 continue;
             }
 
-            if node_prev.unmarked() == prev.get_ptr() {
+            if node_prev.untagged() == prev.get_ptr() {
                 break;
             }
 
-            if node.deref_unmarked().prev.cas(node_prev.get_ptr(), prev.unmarked()) &&
-                !prev.deref_unmarked().prev.is_marked()
+            if node.deref_untagged().prev.cas(node_prev.get_ptr(), prev.untagged()) &&
+                !prev.deref_untagged().prev.is_tagged()
             {
                 break;
             }
@@ -339,37 +339,37 @@ impl<T: 'static> LockFreeLinkedList<T> {
         self.mark_prev(&node);
 
         let mut last: Option<TaggedPtr<Node<T>>> = None;
-        let mut prev = node.deref_unmarked().prev();
-        let mut next = node.deref_unmarked().next();
+        let mut prev = node.deref_untagged().prev();
+        let mut next = node.deref_untagged().next();
 
         loop {
             if prev.get_ptr() == next.get_ptr() {
                 break;
             }
 
-            // if the next node's next ptr is already marked, mark its prev ptr and continue
+            // if the next node's next ptr is already tagged, mark its prev ptr and continue
             // traversing the list
-            if next.deref_unmarked().next.is_marked() {
+            if next.deref_untagged().next.is_tagged() {
                 self.mark_prev(&next);
-                next = next.deref_unmarked().next();
+                next = next.deref_untagged().next();
                 continue;
             }
 
-            let prev_next = prev.deref_unmarked().next();
+            let prev_next = prev.deref_untagged().next();
             if prev_next.get_ptr().is_null() {
                 if let Some(last_node) = last.take() {
                     self.mark_prev(&prev);
-                    let prev_next_2 = prev.deref_unmarked().next();
+                    let prev_next_2 = prev.deref_untagged().next();
                     if !last_node
-                        .deref_unmarked()
+                        .deref_untagged()
                         .next
-                        .cas(prev.unmarked(), prev_next_2.unmarked())
+                        .cas(prev.untagged(), prev_next_2.untagged())
                     {
                         prev = last_node;
                         last = None;
                     }
                 } else {
-                    prev = prev.deref_unmarked().prev();
+                    prev = prev.deref_untagged().prev();
                 }
 
                 continue;
@@ -384,7 +384,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
             // try to update the previou node's next ptr to point to the current node's next
             // ptr
-            if prev.deref_unmarked().next.cas(node.unmarked(), next.unmarked()) {
+            if prev.deref_untagged().next.cas(node.untagged(), next.untagged()) {
                 break;
             }
             #[cfg(all(not(feature = "no-std"), all(test, feature = "loom")))]
@@ -406,7 +406,7 @@ impl<T: 'static> LockFreeLinkedList<T> {
         let mut curr = &self.sentinel_head;
 
         while !curr.get_ptr().is_null() {
-            let c = curr.deref_unmarked();
+            let c = curr.deref_untagged();
             println!(
                 "\n<-- {:?} -- ( self: {:p} data: {:p} ) -- {:?} -->",
                 c.prev,
@@ -495,11 +495,11 @@ mod test {
 
         unsafe {
             // check forward references
-            assert_eq!(head.deref_unmarked().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(head.deref_untagged().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
             assert_eq!((*f_ptr).next.get_ptr(), tail.get_ptr());
 
             // check backward references
-            assert_eq!(tail.deref_unmarked().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(tail.deref_untagged().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
             assert_eq!((*f_ptr).prev.get_ptr(), head.get_ptr());
         }
     }
@@ -518,11 +518,11 @@ mod test {
 
         unsafe {
             // check forward references
-            assert_eq!(head.deref_unmarked().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(head.deref_untagged().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
             assert_eq!((*f_ptr).next.get_ptr(), tail.get_ptr());
 
             // check backward references
-            assert_eq!(tail.deref_unmarked().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(tail.deref_untagged().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
             assert_eq!((*f_ptr).prev.get_ptr(), head.get_ptr());
         }
     }
@@ -541,8 +541,8 @@ mod test {
         let tail = ll.sentinel_tail.clone();
 
         unsafe {
-            assert_eq!(head.deref_unmarked().next.get_ptr(), tail.get_ptr());
-            assert_eq!(tail.deref_unmarked().prev.get_ptr(), head.get_ptr());
+            assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
+            assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
         }
     }
 
@@ -560,8 +560,8 @@ mod test {
         let tail = ll.sentinel_tail.clone();
 
         unsafe {
-            assert_eq!(head.deref_unmarked().next.get_ptr(), tail.get_ptr());
-            assert_eq!(tail.deref_unmarked().prev.get_ptr(), head.get_ptr());
+            assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
+            assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
         }
     }
 
@@ -669,30 +669,30 @@ mod loom_tests {
 
         fn validate_sentinel_head_exists<T: 'static>(ll: &LockFreeLinkedList<T>) {
             unsafe {
-                ll.sentinel_head.deref_unmarked();
+                ll.sentinel_head.deref_untagged();
             }
         }
 
         fn validate_sentinel_tail_exists<T: 'static>(ll: &LockFreeLinkedList<T>) {
             unsafe {
-                ll.sentinel_tail.deref_unmarked();
+                ll.sentinel_tail.deref_untagged();
             }
         }
 
         fn validate_can_traverse_left_to_right<T: 'static>(ll: &LockFreeLinkedList<T>) {
             unsafe {
-                let mut curr = ll.sentinel_head.deref_unmarked().next();
-                while curr.unmarked() != ll.sentinel_tail.unmarked() {
-                    curr = curr.deref_unmarked().next()
+                let mut curr = ll.sentinel_head.deref_untagged().next();
+                while curr.untagged() != ll.sentinel_tail.untagged() {
+                    curr = curr.deref_untagged().next()
                 }
             }
         }
 
         fn validate_can_traverse_right_to_left<T: 'static>(ll: &LockFreeLinkedList<T>) {
             unsafe {
-                let mut curr = ll.sentinel_tail.deref_unmarked().prev();
-                while curr.unmarked() != ll.sentinel_head.unmarked() {
-                    curr = curr.deref_unmarked().prev();
+                let mut curr = ll.sentinel_tail.deref_untagged().prev();
+                while curr.untagged() != ll.sentinel_head.untagged() {
+                    curr = curr.deref_untagged().prev();
                 }
             }
         }
@@ -702,11 +702,11 @@ mod loom_tests {
             data: &T,
         ) {
             unsafe {
-                let mut curr = ll.sentinel_head.deref_unmarked().next();
+                let mut curr = ll.sentinel_head.deref_untagged().next();
                 while curr.get_ptr() != ll.sentinel_tail.get_ptr() {
                     // validate that the pointer is good to go
-                    assert!(*curr.deref_unmarked().data == *data, "data doesn't match");
-                    curr = curr.deref_unmarked().next()
+                    assert!(*curr.deref_untagged().data == *data, "data doesn't match");
+                    curr = curr.deref_untagged().next()
                 }
             }
         }

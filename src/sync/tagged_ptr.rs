@@ -17,7 +17,7 @@ cfg_if::cfg_if! {
 pub struct TaggedPtr<T>(Arc<AtomicPtr<T>>);
 
 impl<T> TaggedPtr<T> {
-    const IS_MARKED_FOR_DELETION: u64 = 0b1;
+    const IS_TAGGED: u64 = 0b1;
 
     /// construct a new TaggedPtr
     pub fn new(t: *mut T) -> Self {
@@ -47,30 +47,30 @@ impl<T> TaggedPtr<T> {
     }
 
     /// returns true if the TaggedPtr has been tagged
-    pub fn is_marked(&self) -> bool {
-        (self.get_ptr() as u64) & Self::IS_MARKED_FOR_DELETION == Self::IS_MARKED_FOR_DELETION
+    pub fn is_tagged(&self) -> bool {
+        (self.get_ptr() as u64) & Self::IS_TAGGED == Self::IS_TAGGED
     }
 
     /// returns the pointer with the tag set
-    pub fn marked(&self) -> *mut T {
-        ((self.get_ptr() as u64) | Self::IS_MARKED_FOR_DELETION) as *mut T
+    pub fn tagged(&self) -> *mut T {
+        ((self.get_ptr() as u64) | Self::IS_TAGGED) as *mut T
     }
 
     /// returns the pointer without the tag set
-    pub fn unmarked(&self) -> *mut T {
-        ((self.get_ptr() as u64) & !Self::IS_MARKED_FOR_DELETION) as *mut T
+    pub fn untagged(&self) -> *mut T {
+        ((self.get_ptr() as u64) & !Self::IS_TAGGED) as *mut T
     }
 
     /// dereference the untagged pointer and immutably borrow the data
     // TODO [matthew-russo] i dont think the 'static is sound
-    pub fn deref_unmarked(&self) -> &'static T {
-        unsafe { &*self.unmarked() }
+    pub fn deref_untagged(&self) -> &'static T {
+        unsafe { &*self.untagged() }
     }
 
     /// dereference the untagged pointer and mutably borrow the data
     // TODO [matthew-russo] i dont think the 'static is sound
-    pub fn deref_unmarked_mut(&self) -> &'static mut T {
-        unsafe { &mut *self.unmarked() }
+    pub fn deref_untagged_mut(&self) -> &'static mut T {
+        unsafe { &mut *self.untagged() }
     }
 }
 
@@ -83,9 +83,9 @@ impl<T> Clone for TaggedPtr<T> {
 impl<T> core::fmt::Debug for TaggedPtr<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!(
-            "{{ ptr: {:p}, is_marked: {} }}",
-            self.unmarked(),
-            self.is_marked()
+            "{{ ptr: {:p}, is_tagged: {} }}",
+            self.untagged(),
+            self.is_tagged()
         ))
     }
 }
