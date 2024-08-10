@@ -181,7 +181,7 @@ impl<T> LinkedList<T> {
         // - patch our sentinel prev to the tail of other
         // - patch our sentinel next to the head of self
 
-        if self.is_empty() && other.is_empty() {
+        if other.is_empty() {
             // nothing to do
         } else if self.is_empty() {
             let other_head = (*other.sentinel).next();
