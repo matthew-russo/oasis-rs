@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "no-std", no_std)]
 
 pub mod memory_map;
+pub mod physical_memory_manager;
 
 /// a memory location in the physical address space
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -83,6 +84,7 @@ pub trait MemoryDefinition {
 mod test_utils {
     use super::*;
 
+    #[derive(Debug, Clone, PartialEq, Eq)]
     #[repr(C, align(4096))]
     pub struct BufferMemory<const SIZE: usize> {
         buffer: [u8; SIZE],
