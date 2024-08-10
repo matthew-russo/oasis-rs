@@ -323,7 +323,6 @@ impl<T> LinkedListNode<T> {
         self.set_prev(node);
     }
 
-
     /// insert the provided node after the current node
     /// # Safety
     /// `node` must be a valid LinkedListNode<T>
@@ -514,10 +513,7 @@ pub struct LinkedListCursor<'a, T> {
 impl<'a, T> LinkedListCursor<'a, T> {
     fn new(ll: &'a mut LinkedList<T>) -> Self {
         let curr = ll.sentinel;
-        Self {
-            ll,
-            curr,
-        }
+        Self { ll, curr }
     }
 
     /// get the data of the current node or None if the current node is the

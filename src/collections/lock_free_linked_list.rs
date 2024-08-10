@@ -124,7 +124,9 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
             // prep the node for insertion in between the current tail and our sentinel tail
             node.deref_untagged().prev.set_ptr(current_tail.untagged());
-            node.deref_untagged().next.set_ptr(self.sentinel_tail.untagged());
+            node.deref_untagged()
+                .next
+                .set_ptr(self.sentinel_tail.untagged());
 
             // (2): LOGICALLY INSERT
             // update the current tail's next pointer to point to our node
@@ -237,7 +239,11 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
             // (3): FINALIZE INSERT
             // update the next node's previous ptr to point ot our newly inserted node
-            if next.deref_untagged().prev.cas(next_prev.get_ptr(), node.untagged()) {
+            if next
+                .deref_untagged()
+                .prev
+                .cas(next_prev.get_ptr(), node.untagged())
+            {
                 if node.deref_untagged().prev.is_tagged() {
                     self.help_insert(node, next);
                 }
@@ -252,7 +258,12 @@ impl<T: 'static> LockFreeLinkedList<T> {
     fn mark_prev(&self, node: &TaggedPtr<Node<T>>) {
         loop {
             let prev = node.deref_untagged().prev();
-            if prev.is_tagged() || node.deref_untagged().prev.cas(prev.get_ptr(), prev.tagged()) {
+            if prev.is_tagged()
+                || node
+                    .deref_untagged()
+                    .prev
+                    .cas(prev.get_ptr(), prev.tagged())
+            {
                 break;
             }
             #[cfg(all(not(feature = "no-std"), all(test, feature = "loom")))]
@@ -265,14 +276,18 @@ impl<T: 'static> LockFreeLinkedList<T> {
             let prev = node.deref_untagged().prev();
 
             if prev.deref_untagged().prev.is_tagged() {
-                node.deref_untagged().prev.set_ptr(prev.deref_untagged().prev.tagged());
+                node.deref_untagged()
+                    .prev
+                    .set_ptr(prev.deref_untagged().prev.tagged());
                 continue;
             }
 
             let next = node.deref_untagged().next();
 
             if next.deref_untagged().prev.is_tagged() {
-                node.deref_untagged().next.set_ptr(next.deref_untagged().next.tagged());
+                node.deref_untagged()
+                    .next
+                    .set_ptr(next.deref_untagged().next.tagged());
                 continue;
             }
 
@@ -323,8 +338,11 @@ impl<T: 'static> LockFreeLinkedList<T> {
                 break;
             }
 
-            if node.deref_untagged().prev.cas(node_prev.get_ptr(), prev.untagged()) &&
-                !prev.deref_untagged().prev.is_tagged()
+            if node
+                .deref_untagged()
+                .prev
+                .cas(node_prev.get_ptr(), prev.untagged())
+                && !prev.deref_untagged().prev.is_tagged()
             {
                 break;
             }
@@ -384,7 +402,11 @@ impl<T: 'static> LockFreeLinkedList<T> {
 
             // try to update the previou node's next ptr to point to the current node's next
             // ptr
-            if prev.deref_untagged().next.cas(node.untagged(), next.untagged()) {
+            if prev
+                .deref_untagged()
+                .next
+                .cas(node.untagged(), next.untagged())
+            {
                 break;
             }
             #[cfg(all(not(feature = "no-std"), all(test, feature = "loom")))]
@@ -495,11 +517,17 @@ mod test {
 
         unsafe {
             // check forward references
-            assert_eq!(head.deref_untagged().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(
+                head.deref_untagged().next.get_ptr(),
+                core::ptr::addr_of_mut!(*f_ptr)
+            );
             assert_eq!((*f_ptr).next.get_ptr(), tail.get_ptr());
 
             // check backward references
-            assert_eq!(tail.deref_untagged().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(
+                tail.deref_untagged().prev.get_ptr(),
+                core::ptr::addr_of_mut!(*f_ptr)
+            );
             assert_eq!((*f_ptr).prev.get_ptr(), head.get_ptr());
         }
     }
@@ -518,11 +546,17 @@ mod test {
 
         unsafe {
             // check forward references
-            assert_eq!(head.deref_untagged().next.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(
+                head.deref_untagged().next.get_ptr(),
+                core::ptr::addr_of_mut!(*f_ptr)
+            );
             assert_eq!((*f_ptr).next.get_ptr(), tail.get_ptr());
 
             // check backward references
-            assert_eq!(tail.deref_untagged().prev.get_ptr(), core::ptr::addr_of_mut!(*f_ptr));
+            assert_eq!(
+                tail.deref_untagged().prev.get_ptr(),
+                core::ptr::addr_of_mut!(*f_ptr)
+            );
             assert_eq!((*f_ptr).prev.get_ptr(), head.get_ptr());
         }
     }

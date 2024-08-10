@@ -146,9 +146,7 @@ impl PhysicalMemoryManager {
                     }
                 }
 
-                if current_mem.into_inner() + FRAME_SIZE - start_mem.unwrap().into_inner()
-                    >= size
-                {
+                if current_mem.into_inner() + FRAME_SIZE - start_mem.unwrap().into_inner() >= size {
                     // WE FOUND IT
                     found_start = Some(start_mem.unwrap());
                     break;

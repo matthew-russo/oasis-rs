@@ -212,14 +212,8 @@ mod tests {
             i: 1,
             name: "peter",
         };
-        let ms2 = MyTestStruct {
-            i: 2,
-            name: "paul",
-        };
-        let ms3 = MyTestStruct {
-            i: 3,
-            name: "mary",
-        };
+        let ms2 = MyTestStruct { i: 2, name: "paul" };
+        let ms3 = MyTestStruct { i: 3, name: "mary" };
         let ms4 = MyTestStruct { i: 4, name: "john" };
         rb.push(ms1.clone()).expect("failed to push");
         rb.push(ms2.clone()).expect("failed to push");

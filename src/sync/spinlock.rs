@@ -29,7 +29,7 @@ impl<T> Spinlock<T> {
     }
 
     /// acquire the lock, spinning the cpu if its already held. the returned guard
-    /// will release the lock 
+    /// will release the lock
     pub fn lock(&self) -> SpinlockGuard<'_, T> {
         while self
             .is_locked
@@ -73,8 +73,6 @@ impl<T> Spinlock<T> {
     fn unlock(&self) {
         self.is_locked.store(UNLOCKED, Ordering::Release);
     }
-
-    
 }
 
 /// SpinlockGuard provides safe access to the data behind a Spinlock. It follows

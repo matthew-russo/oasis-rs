@@ -197,7 +197,8 @@ fn rotate_right_left<T: Ord>(
             // t2 was higher
             curr_root.set_balance_factor(0);
             curr_right_node_with_heavy_left
-                .set_balance_factor(curr_right_node_with_heavy_left.balance_factor() + 1); // t4 now higher
+                .set_balance_factor(curr_right_node_with_heavy_left.balance_factor() + 1);
+            // t4 now higher
         }
     }
 
@@ -278,7 +279,6 @@ fn rotate_left_right<T: Ord>(
                 curr_left_node_with_heavy_right.set_balance_factor(0);
             }
             Ordering::Equal => {
-
                 curr_root.set_balance_factor(0);
                 curr_left_node_with_heavy_right.set_balance_factor(0);
             }
@@ -326,8 +326,8 @@ impl<T: Ord> AvlTree<T> {
                     curr = c.left_child();
                 }
             } else if c.right_child().is_null() {
-                    c.set_right_child(Box::into_raw(Box::new(AvlTreeNode::new(key))));
-                    break;
+                c.set_right_child(Box::into_raw(Box::new(AvlTreeNode::new(key))));
+                break;
             } else {
                 curr = c.right_child();
             }
