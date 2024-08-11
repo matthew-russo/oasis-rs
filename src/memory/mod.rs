@@ -80,6 +80,20 @@ pub trait MemoryDefinition {
     fn free_frames(&self, frame_size: usize) -> Self::FreeFrameIter<'_>;
 }
 
+#[cfg(target_arch = "x86_64")]
+pub const fn assert_page_aligned(n: usize) {
+    if align_to_page(n) != n {
+        panic!("Value not page aligned");
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+pub const fn align_to_page(addr: usize) -> usize {
+    (addr + (crate::arch::x86_64::paging::PAGE_SIZE - 1))
+        & !(crate::arch::x86_64::paging::PAGE_SIZE - 1)
+}
+
 #[cfg(test)]
 mod test_utils {
     use super::*;

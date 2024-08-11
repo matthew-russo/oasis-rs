@@ -205,9 +205,9 @@ pub struct MemoryMapEntry {
 impl MemoryMapEntry {
     pub fn new(phys_start: usize, phys_end: usize) -> Self {
         #[cfg(target_arch = "x86_64")]
-        crate::assert_page_aligned(phys_start);
+        crate::memory::assert_page_aligned(phys_start);
         #[cfg(target_arch = "x86_64")]
-        crate::assert_page_aligned(phys_end);
+        crate::memory::assert_page_aligned(phys_end);
         Self {
             phys_start,
             phys_end,
