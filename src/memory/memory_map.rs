@@ -1,6 +1,7 @@
 use super::{MemoryDefinition, PhysicalAddress};
 
-/// MemoryMap describes memory ranges that are available to use. it is
+/// MemoryMap describes memory ranges that are available to use.
+///
 /// internally structured as a C-style array of MemoryMapEntries, but
 /// provides a more ergonomic interface through an implementation of
 /// `MemoryDefinition`

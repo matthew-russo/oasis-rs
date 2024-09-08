@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "no-std", no_std)]
 
+pub mod alloc;
 pub mod memory_map;
-pub mod physical_memory_manager;
 
 /// a memory location in the physical address space
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd)]

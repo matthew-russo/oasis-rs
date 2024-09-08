@@ -50,3 +50,9 @@ impl TaskStateSegment {
         }
     }
 }
+
+impl Default for TaskStateSegment {
+    fn default() -> Self {
+        Self::new()
+    }
+}

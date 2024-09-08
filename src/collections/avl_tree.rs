@@ -662,7 +662,7 @@ mod test {
     #[test]
     fn can_remove() {
         let mut tree = AvlTree::new();
-        for i in SMALL_TEST_ARRAY {
+        for _ in SMALL_TEST_ARRAY {
             tree.insert(42_u32);
             tree.remove(&42_u32)
                 .expect("remove should have successfully removed node");

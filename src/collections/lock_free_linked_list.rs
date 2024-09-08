@@ -574,10 +574,8 @@ mod test {
         let head = ll.sentinel_head.clone();
         let tail = ll.sentinel_tail.clone();
 
-        unsafe {
-            assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
-            assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
-        }
+        assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
+        assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
     }
 
     #[test]
@@ -593,10 +591,8 @@ mod test {
         let head = ll.sentinel_head.clone();
         let tail = ll.sentinel_tail.clone();
 
-        unsafe {
-            assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
-            assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
-        }
+        assert_eq!(head.deref_untagged().next.get_ptr(), tail.get_ptr());
+        assert_eq!(tail.deref_untagged().prev.get_ptr(), head.get_ptr());
     }
 
     #[test]

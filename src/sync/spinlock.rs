@@ -101,6 +101,8 @@ impl<'a, T> Drop for SpinlockGuard<'a, T> {
     }
 }
 
+/// A Spinlock guard that doesn't unlock the lock when dropped
+///
 /// RawSpinlockGaurd provides access to the data behind a Spinlock but unlike its
 /// safer variant [`SpinlockGuard`], [`RawSpinlockGuard`] does not unlock the lock
 /// when its dropped. It is primarily used in low-level syncrhonization primitives
