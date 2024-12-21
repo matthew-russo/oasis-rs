@@ -156,10 +156,7 @@ impl PhysicalMemoryAllocator {
             // 2. If we found a memory start, we now need to remove that subsection
             // of the free list. To do this we pop off the list in to our placeholder
             // list until we find the start node.
-            let found_start = match found_start {
-                Some(found_start) => found_start,
-                None => return None,
-            };
+            let found_start = found_start?;
 
             let mut sentinel = MaybeUninit::uninit();
 

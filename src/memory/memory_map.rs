@@ -145,7 +145,7 @@ impl<'a> FreeFrameIter<'a> {
     }
 }
 
-impl<'a> Iterator for FreeFrameIter<'a> {
+impl Iterator for FreeFrameIter<'_> {
     type Item = PhysicalAddress;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -171,7 +171,7 @@ impl<'a> Iterator for FreeFrameIter<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for FreeFrameIter<'a> {
+impl DoubleEndedIterator for FreeFrameIter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.validate_front_and_back_havent_crossed()?;
 

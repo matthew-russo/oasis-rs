@@ -613,7 +613,7 @@ pub struct AvlTreeIter<'a, T: Ord> {
     lifetime: core::marker::PhantomData<&'a T>,
 }
 
-impl<'a, T: Ord> AvlTreeIter<'a, T> {
+impl<T: Ord> AvlTreeIter<'_, T> {
     fn new(curr_node: *mut AvlTreeNode<T>) -> Self {
         Self {
             curr_node,
